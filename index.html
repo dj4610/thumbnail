@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Thumbnail Studio - Text & Font Optimized</title>
+    <style>
+        :root {
+            --bg-dark: #0f0f0f;
+            --panel-bg: #1e1e1e;
+            --accent: #ff0000;
+            --accent-light: #00e5ff;
+            --text-color: #efefef;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; background-color: var(--bg-dark); color: var(--text-color);
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        header {
+            height: 60px; background: var(--panel-bg); border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 100;
+        }
+
+        .res-selector {
+            display: flex; align-items: center; gap: 10px; background: #2a2a2a;
+            padding: 5px 15px; border-radius: 20px; border: 1px solid #444;
+        }
+
+        select, input[type="number"] {
+            background: #1a1a1a; color: var(--accent-light); border: 1px solid #444;
+            outline: none; padding: 5px; border-radius: 4px; font-weight: bold;
+        }
+
+        .export-btn {
+            background: var(--accent); color: white; border: none; padding: 10px 20px;
+            border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.3s;
+        }
+        .export-btn:hover { background: #cc0000; transform: scale(1.05); }
+
+        main { display: flex; flex: 1; overflow: hidden; }
+
+        .sidebar {
+            width: 80px; background: var(--panel-bg); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; align-items: center; padding-top: 20px; gap: 25px;
+        }
+
+        .tool {
+            text-align: center; font-size: 11px; cursor: pointer; opacity: 0.6; transition: 0.3s;
+        }
+        .tool:hover { opacity: 1; color: var(--accent-light); }
+        .tool i { font-size: 24px; display: block; margin-bottom: 5px; }
+
+        .workspace {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            background: #222; padding: 20px; overflow: auto;
+        }
+
+        .canvas-container {
+            border: 2px solid var(--accent-light); background: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); line-height: 0;
+        }
+
+        canvas { display: block; image-rendering: -webkit-optimize-contrast; }
+
+        .right-panel {
+            width: 320px; background: var(--panel-bg); border-left: 1px solid var(--border);
+            display: flex; flex-direction: column;
+        }
+
+        .scroll-area { flex: 1; overflow-y: auto; padding: 20px; }
+
+        h3 { font-size: 12px; color: var(--accent-light); text-transform: uppercase; margin: 20px 0 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        label { display: block; font-size: 11px; color: #888; margin: 10px 0 5px; text-transform: uppercase; }
+        
+        input[type="text"], input[type="range"], input[type="color"] {
+            width: 100%; background: #2a2a2a; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; box-sizing: border-box;
+        }
+
+        .manual-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .manual-row div { flex: 1; }
+
+        .layer-item {
+            background: #2a2a2a; margin-bottom: 5px; padding: 10px; border-radius: 4px;
+            display: flex; align-items: center; justify-content: space-between; font-size: 12px; cursor: pointer;
+        }
+        .layer-item.active { border: 1px solid var(--accent-light); background: #333; }
+        
+        .btn-del {
+            background: #441111; color: #ff5555; border: 1px solid #662222; padding: 10px;
+            border-radius: 5px; cursor: pointer; width: 100%; margin-top: 20px; font-weight: bold;
+        }
+
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="font-weight: bold; letter-spacing: 2px;">YT<span style="color:var(--accent)">STUDIO</span> PRO</div>
+    
+    <div class="res-selector">
+        <span style="color:#888; font-size: 12px;">Resolusi Output:</span>
+        <select id="resSelect" onchange="changeResolution()">
+            <option value="1280x720" selected>1280 x 720 (HD)</option>
+            <option value="1920x1080">1920 x 1080 (Full HD)</option>
+            <option value="1080x1920">1080 x 1920 (Shorts)</option>
+        </select>
+    </div>
+
+    <button class="export-btn" onclick="exportImage()">DOWNLOAD PNG</button>
+</header>
+
+<main>
+    <div class="sidebar">
+        <div class="tool" onclick="document.getElementById('imgInp').click()"><i>🖼️</i>Media</div>
+        <div class="tool" onclick="addText()"><i>T</i>Teks</div>
+    </div>
+
+    <div class="workspace">
+        <div class="canvas-container">
+            <canvas id="c" width="1280" height="720"></canvas>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div class="scroll-area">
+            <div id="propView" style="display:none">
+                <h3>Transformasi Manual</h3>
+                <div class="manual-row">
+                    <div>
+                        <label>Skala (%)</label>
+                        <input type="number" id="sManual" value="100" oninput="updManual()">
+                    </div>
+                    <div>
+                        <label>Rotasi (°)</label>
+                        <input type="number" id="rManual" value="0" oninput="updManual()">
+                    </div>
+                </div>
+                <input type="range" id="sInp" min="0.001" max="3" step="0.001" oninput="upd()">
+
+                <div id="txtCtrl">
+                    <h3>Gaya Teks</h3>
+                    <label>Isi Tulisan</label>
+                    <input type="text" id="tContent" oninput="upd()">
+                    <label>Font</label>
+                    <select id="tFont" onchange="upd()">
+                        <option value="Arial Black">Arial Black</option>
+                        <option value="Impact">Impact</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Montserrat">Montserrat</option>
+                    </select>
+                    <label>Warna Teks</label>
+                    <input type="color" id="tColor" oninput="upd()">
+                    
+                    <div style="display:flex; align-items:center; gap:10px; margin: 15px 0;">
+                        <input type="checkbox" id="bgShow" onchange="upd()"> <span>Pakai Background</span>
+                    </div>
+                    
+                    <label>Warna Background</label>
+                    <input type="color" id="bgColor" oninput="upd()">
+                    <label>Radius (Lengkungan)</label>
+                    <input type="range" id="bgRad" min="0" max="100" oninput="upd()">
+                </div>
+                <button class="btn-del" onclick="del()">Hapus Objek</button>
+            </div>
+
+            <div id="noSel" style="text-align:center; padding: 40px 0; color:#555">Pilih objek di kanvas</div>
+
+            <h3>Daftar Layers</h3>
+            <div id="layerList"></div>
+        </div>
+    </div>
+</main>
+
+<input type="file" id="imgInp" accept="image/*" onchange="handleImg(this)">
+
+<script>
+    const c = document.getElementById('c');
+    const ctx = c.getContext('2d');
+    let layers = [];
+    let sel = null;
+    let dragging = false, resizing = false;
+    let off = { x: 0, y: 0 }, startS = 1, startD = 0;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    function changeResolution() {
+        const [w, h] = document.getElementById('resSelect').value.split('x');
+        const oldW = c.width; const oldH = c.height;
+        c.width = parseInt(w); c.height = parseInt(h);
+        layers.forEach(l => {
+            l.x = (l.x / oldW) * c.width;
+            l.y = (l.y / oldH) * c.height;
+        });
+        render();
+    }
+
+    function addText() {
+        const obj = {
+            id: Date.now(), name: 'Teks ' + (layers.length + 1), type: 'text',
+            txt: 'JUDUL BARU', x: c.width/2, y: c.height/2,
+            fSize: 80, font: 'Arial Black', col: '#ffffff', rot: 0, scale: 1,
+            bg: true, bgCol: '#ff0000', bgR: 15, pad: 25
+        };
+        layers.push(obj); select(obj); render();
+    }
+
+    function handleImg(input) {
+        if (!input.files[0]) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                // Logika FIT: Gambar menyesuaikan ukuran kanvas agar tidak terpotong saat masuk
+                const scale = Math.min(c.width / img.width, c.height / img.height) * 0.8;
+                const obj = {
+                    id: Date.now(), name: 'Gambar ' + (layers.length + 1), type: 'img',
+                    img: img, x: c.width/2, y: c.height/2,
+                    w: img.width, h: img.height, rot: 0, scale: scale
+                };
+                layers.push(obj); select(obj); render();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, c.width, c.height);
+        ctx.fillStyle = '#111'; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+
+        layers.forEach(l => {
+            ctx.save();
+            ctx.translate(Math.round(l.x), Math.round(l.y));
+            ctx.rotate(l.rot * Math.PI / 180);
+            ctx.scale(l.scale, l.scale);
+
+            let w, h;
+            if (l.type === 'text') {
+                ctx.font = `bold ${l.fSize}px "${l.font}"`;
+                const m = ctx.measureText(l.txt);
+                w = m.width + l.pad * 2;
+                h = l.fSize + l.pad * 2;
+                if (l.bg) {
+                    ctx.fillStyle = l.bgCol; ctx.beginPath();
+                    // Logika RoundRect dari kode yang Anda lampirkan
+                    ctx.roundRect(Math.round(-w/2), Math.round(-h/2), Math.round(w), Math.round(h), l.bgR);
+                    ctx.fill();
+                }
+                ctx.fillStyle = l.col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(l.txt, 0, 0);
+            } else {
+                w = l.w; h = l.h;
+                ctx.drawImage(l.img, Math.round(-w/2), Math.round(-h/2), Math.round(w), Math.round(h));
+            }
+
+            if (l === sel) {
+                ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 3 / l.scale;
+                ctx.strokeRect(Math.round(-w/2 - 5), Math.round(-h/2 - 5), Math.round(w + 10), Math.round(h + 10));
+                ctx.fillStyle = '#fff'; ctx.fillRect(w/2, h/2, 20/l.scale, 20/l.scale);
+            }
+            ctx.restore();
+        });
+        updLayers();
+    }
+
+    function select(l) {
+        sel = l;
+        document.getElementById('noSel').style.display = 'none';
+        document.getElementById('propView').style.display = 'block';
+        document.getElementById('sInp').value = l.scale;
+        document.getElementById('sManual').value = Math.round(l.scale * 100);
+        document.getElementById('rManual').value = l.rot;
+        
+        if (l.type === 'text') {
+            document.getElementById('txtCtrl').style.display = 'block';
+            document.getElementById('tContent').value = l.txt;
+            document.getElementById('tFont').value = l.font;
+            document.getElementById('tColor').value = l.col;
+            document.getElementById('bgShow').checked = l.bg;
+            document.getElementById('bgColor').value = l.bgCol;
+            document.getElementById('bgRad').value = l.bgR;
+        } else {
+            document.getElementById('txtCtrl').style.display = 'none';
+        }
+        render();
+    }
+
+    function upd() {
+        if (!sel) return;
+        sel.scale = parseFloat(document.getElementById('sInp').value);
+        sel.rot = parseInt(document.getElementById('rManual').value);
+        document.getElementById('sManual').value = Math.round(sel.scale * 100);
+        if (sel.type === 'text') {
+            sel.txt = document.getElementById('tContent').value;
+            sel.font = document.getElementById('tFont').value;
+            sel.col = document.getElementById('tColor').value;
+            sel.bg = document.getElementById('bgShow').checked;
+            sel.bgCol = document.getElementById('bgColor').value;
+            sel.bgR = parseInt(document.getElementById('bgRad').value);
+        }
+        render();
+    }
+
+    function updManual() {
+        if (!sel) return;
+        sel.scale = parseFloat(document.getElementById('sManual').value) / 100;
+        sel.rot = parseInt(document.getElementById('rManual').value);
+        document.getElementById('sInp').value = sel.scale;
+        render();
+    }
+
+    function updLayers() {
+        const container = document.getElementById('layerList');
+        container.innerHTML = '';
+        [...layers].reverse().forEach(l => {
+            const div = document.createElement('div');
+            div.className = `layer-item ${sel === l ? 'active' : ''}`;
+            div.innerHTML = `<span>${l.name}</span> <small>${l.type}</small>`;
+            div.onclick = () => select(l);
+            container.appendChild(div);
+        });
+    }
+
+    function del() {
+        layers = layers.filter(l => l !== sel); sel = null;
+        document.getElementById('noSel').style.display = 'block';
+        document.getElementById('propView').style.display = 'none';
+        render();
+    }
+
+    c.onmousedown = (e) => {
+        const r = c.getBoundingClientRect();
+        const mx = (e.clientX - r.left) * (c.width / r.width);
+        const my = (e.clientY - r.top) * (c.height / r.height);
+        if (sel) {
+            const s = sel.scale;
+            const w = (sel.type === 'text' ? ctx.measureText(sel.txt).width + sel.pad*2 : sel.w) * s;
+            const h = (sel.type === 'text' ? sel.fSize + sel.pad*2 : sel.h) * s;
+            if (mx > sel.x + w/2 - 30 && mx < sel.x + w/2 + 30 && my > sel.y + h/2 - 30 && my < sel.y + h/2 + 30) {
+                resizing = true; startD = Math.hypot(mx - sel.x, my - sel.y); startS = sel.scale; return;
+            }
+        }
+        for (let i = layers.length - 1; i >= 0; i--) {
+            const l = layers[i];
+            const hit = Math.max(60, (l.type === 'text' ? 100 : l.w/4) * l.scale);
+            if (Math.hypot(l.x - mx, l.y - my) < hit) {
+                select(l); dragging = true; off.x = mx - l.x; off.y = my - l.y; render(); return;
+            }
+        }
+        sel = null; render();
+    };
+
+    window.onmousemove = (e) => {
+        const r = c.getBoundingClientRect();
+        const mx = (e.clientX - r.left) * (c.width / r.width);
+        const my = (e.clientY - r.top) * (c.height / r.height);
+        if (resizing && sel) {
+            sel.scale = (Math.hypot(mx - sel.x, my - sel.y) / startD) * startS;
+            if (sel.scale < 0.001) sel.scale = 0.001; upd();
+        } else if (dragging && sel) {
+            sel.x = mx - off.x; sel.y = my - off.y; render();
+        }
+    };
+
+    window.onmouseup = () => { dragging = false; resizing = false; };
+
+    function exportImage() {
+        sel = null; render();
+        setTimeout(() => {
+            const link = document.createElement('a');
+            const res = document.getElementById('resSelect').value;
+            link.download = `youtube-thumbnail-${res}.png`;
+            link.href = c.toDataURL('image/png', 1.0);
+            link.click();
+        }, 50);
+    }
+    changeResolution();
+</script>
+</body>
+</html>
